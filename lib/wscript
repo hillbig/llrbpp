@@ -1,0 +1,13 @@
+def options(ctx):
+  pass
+    
+def configure(ctx):
+  pass
+
+def build(bld):
+  bld.program(
+       features     = 'gtest',
+       source       = 'llrbppTest.cpp',
+       target       = 'llrbpptest',
+       includes     = '.')
+  bld.install_files('${PREFIX}/include/llrbpp', bld.path.ant_glob('*.hpp'))

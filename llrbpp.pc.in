@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: @PACKAGE@
+Description: Left-Leaning Red-Black Tree in C++
+Version: @VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -llrbpp
