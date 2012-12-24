@@ -1,6 +1,6 @@
 /* 
  *  Copyright (c) 2012 Daisuke Okanohara
-  * 
+ * 
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
  *   are met:
@@ -21,14 +21,10 @@
 #define LLRBPP_LLRBPP_HPP_
 
 #include <stdint.h>
-#include <iostream>
-#include <exception>
+#include <utility>
 #include "llrbppNode.hpp"
 
 namespace llrbpp{
-
-class NotFound : std::exception {
-};
 
 template <class Key, class Val, class Comp = std::less<Key> >
 class LLRBPP{
@@ -59,18 +55,19 @@ public:
     num_ = 0;
   }
 
-  Val Search(Key key) const{
+  // Return (true, value) if key exists and (false, Val()) otherwise.
+  std::pair<bool, Val> Find(Key key) const{
     Node<Key, Val>* node = root_;
     while (node != NULL){
       if (key == node->key){
-        return node->val;
+        return std::make_pair(true, node->val);
       } else if (Comp()(key, node->key)){
         node = node->left;
       } else {
         node = node->right;
       }
     }
-    throw NotFound();
+    return std::make_pair(false, Val());
   }
 
   int DepthSum() const{

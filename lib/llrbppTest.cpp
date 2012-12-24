@@ -34,15 +34,15 @@ TEST(llrbpp, trivial){
   fid.Insert("ccc", 2);
 
   EXPECT_EQ(4, fid.Num());
-  EXPECT_EQ(5, fid.Search("eee"));
-  EXPECT_THROW(fid.Search("ddd"), llrbpp::NotFound);
+  EXPECT_EQ(make_pair(true, 5), fid.Find("eee"));
+  EXPECT_EQ(make_pair(false, int()), fid.Find("ddd"));
 
   fid.Delete("eee");
-  EXPECT_THROW(fid.Search("eee"), llrbpp::NotFound);
+  EXPECT_EQ(make_pair(false, int()), fid.Find("eee"));
 
   fid.Clear();
   EXPECT_EQ(0, fid.Num());
-  EXPECT_THROW(fid.Search("eee"), llrbpp::NotFound);
+  EXPECT_EQ(make_pair(false, int()), fid.Find("eee"));
   fid.Clear();
   EXPECT_EQ(0, fid.Num());
 }
@@ -68,12 +68,8 @@ TEST(llrbpp, small){
     }
   }
   ASSERT_EQ(m.size(), fid.Num());
-  try {
-    for (map<int, int>::const_iterator it = m.begin(); it != m.end(); ++it){
-      EXPECT_EQ(it->second, fid.Search(it->first));
-    }
-  } catch (...){
-    FAIL();
+  for (map<int, int>::const_iterator it = m.begin(); it != m.end(); ++it){
+    EXPECT_EQ(make_pair(true, it->second), fid.Find(it->first));
   }
 }  
 
