@@ -8,5 +8,5 @@ def build(bld):
   bld.program(
        source       = 'test.cpp',
        target       = 'llfid',
-       use          = 'LLFID',
+       use          = 'LLFID PREFIXSUM',
        includes     = '.')

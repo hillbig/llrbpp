@@ -5,9 +5,21 @@ def configure(ctx):
   pass
 
 def build(bld):
+  bld.shlib(
+       source       = 'PrefixSum.cpp',
+       target       = 'prefixsum',
+       name         = 'PREFIXSUM',
+       includes     = '.')
   bld.program(
        features     = 'gtest',
        source       = 'llrbppTest.cpp',
        target       = 'llrbpptest',
        includes     = '.')
+  bld.program(
+       features     = 'gtest',
+       source       = 'PrefixSumTest.cpp',
+       target       = 'prefixsumtest',
+       use          = 'PREFIXSUM',
+       includes     = '.')
+
   bld.install_files('${PREFIX}/include/llrbpp', bld.path.ant_glob('*.hpp'))
