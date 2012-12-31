@@ -23,224 +23,347 @@
 
 namespace prefixsum{
 
-PrefixSum::PrefixSum() : root_(NULL), num_(0), sum_(0){
+PrefixSum::PrefixSum() : val_sum_(0), root_ind_(0LL){
 }
 
 PrefixSum::~PrefixSum(){
 }
 
 void PrefixSum::Clear(){
-  delete root_;
-  num_ = 0;
-  sum_= 0;
+  nodes_.clear();
+  leaves_.clear();
+  val_sum_ = 0;
+  root_ind_ = 0;
 }
 
-void PrefixSum::Insert(int64_t ind, int64_t val){
-  if (ind > num_){
+void PrefixSum::Insert(uint64_t ind, int64_t val){
+  if (ind > leaves_.size()){
     throw std::out_of_range("PrefixSum::InsertInternal out of range");
   }
-  if (num_ == 0){
-    sum_ = val;
-    ++num_;
-    return;
-  } 
-  root_ = InsertInternal(root_, ind, val, sum_);
-  root_->color = kBLACK;
-  sum_ += val;
-  ++num_;
+  if (leaves_.size() == 0){
+    // ind == 0
+    leaves_.push_back(PrefixSumLeaf(-1, val));
+    root_ind_ = -1; // = leaves_[0]
+  } else {
+    root_ind_ = InsertInternal(root_ind_, ind, val);
+    nodes_[root_ind_].color = kBLACK;
+  }
+  val_sum_ += val;
 }
 
-void PrefixSum::Add(int64_t ind, int64_t val){
-  if (ind >= num_){
+void PrefixSum::Add(uint64_t ind, int64_t val){
+  if (ind >= Num()){
     throw std::out_of_range("PrefixSum::Add out of range");  
   }
-  sum_ += val;
-  if (num_ == 1){
+  val_sum_ += val;
+  if (Num() == 1){
+    leaves_[0].val += val;
     return;
   }
-  PrefixSumNode* node = root_;
+  int64_t node_ind = root_ind_;
   for (;;){
-    node->sum += val;
-    int64_t left_weight = node->GetLeftWeight();
+    PrefixSumNode& node = nodes_[node_ind];
+    node.sum += val;
+    uint64_t left_weight = GetLeftWeight(node_ind);
     if (ind < left_weight){
-      if (node->left == NULL){
-        node->left_val += val;
+      if (node.left_ind < 0){
+        leaves_[ToLeafInd(node.left_ind)].val += val;
         return;
       }
-      node = node->left;
+      node_ind = node.left_ind;
     } else {
       ind -= left_weight;
-      if (node->right == NULL){
-        node->right_val += val;
+      if (node.right_ind < 0){
+        leaves_[ToLeafInd(node.right_ind)].val += val;
         return;
       }
-      node = node->right;
+      node_ind = node.right_ind;
     }
   }
 }
 
-void PrefixSum::Set(int64_t ind, int64_t val){
-  if (ind >= num_){
+void PrefixSum::Set(uint64_t ind, int64_t val){
+  if (ind >= Num()){
     throw std::out_of_range("PrefixSum::Set out of range");  
   }
   int64_t cur_val = Get(ind);
   Add(ind, val - cur_val);
 }
 
-int64_t PrefixSum::Get(int64_t ind) const{
-  if (ind >= num_){
+int64_t PrefixSum::Get(uint64_t ind) const{
+  if (ind >= Num()){
     throw std::out_of_range("PrefixSum::Add out of range");  
   }
-  if (num_ == 1){
-    return sum_;
+  if (Num() == 1){
+    return leaves_[0].val;
   }
-  PrefixSumNode* node = root_;
+  int64_t node_ind = root_ind_;
   for (;;){
-    int64_t left_weight = node->GetLeftWeight();
+    const PrefixSumNode& node = nodes_[node_ind];
+    uint64_t left_weight = GetLeftWeight(node_ind);
     if (ind < left_weight){
-      if (node->left == NULL){
-        return node->left_val;
+      if (node.left_ind < 0){
+        return leaves_[ToLeafInd(node.left_ind)].val;
       }
-      node = node->left;
+      node_ind = node.left_ind;
     } else {
-      if (node->right == NULL){
-        return node->right_val;
+      if (node.right_ind < 0){
+        return leaves_[ToLeafInd(node.right_ind)].val;
       }
       ind -= left_weight;
-      node = node->right;
+      node_ind = node.right_ind;
     }
   }
 }
 
-int64_t PrefixSum::GetPrefixSum(int64_t ind) const{
-  if (ind > num_){
+int64_t PrefixSum::GetPrefixSum(uint64_t ind) const{
+  if (ind > Num()){
     throw std::out_of_range("PrefixSum::Add out of range");  
   }
-  if (ind == num_) {
-    return sum_;
+  if (ind == Num()){
+    return val_sum_;
   }
-  if (num_ == 1){
-    if (ind == 0) return 0;
-    else return sum_;
+  if (Num() == 1){
+    return 0; // ind == 0
   }
-  PrefixSumNode* node = root_;
+  int64_t node_ind = root_ind_;
   int64_t sum = 0;
-  while (node != NULL){
-    int64_t left_weight = node->GetLeftWeight();
+  while (node_ind >= 0){
+    const PrefixSumNode& node = nodes_[node_ind];
+    uint64_t left_weight = GetLeftWeight(node_ind);
     if (ind < left_weight){
-      node = node->left;
+      node_ind = node.left_ind;
     } else {
-      sum += node->GetLeftVal();
+      sum += GetLeftVal(node_ind);
       ind -= left_weight;
-      node = node->right;
+      node_ind = node.right_ind;
     }
   }
   return sum;
 }
 
-int64_t PrefixSum::FindInPositiveValues(int64_t val) const{
-  if (val >= sum_){
-    return num_;
+uint64_t PrefixSum::FindInPositiveValues(int64_t val) const{
+  if (val >= val_sum_){
+    return Num();
   }
-  if (num_ == 1){
-    if (val < sum_) return 0;
+  if (Num() == 1){
+    if (val < val_sum_) return 0;
     else return 1;
   }
-  PrefixSumNode* node = root_;
+  int64_t node_ind = root_ind_;
   int64_t ind = 0;
-  while (node != NULL){
-    int64_t left_val = node->GetLeftVal();
+  while (node_ind >= 0){
+    const PrefixSumNode& node = nodes_[node_ind];
+    int64_t left_val = GetLeftVal(node_ind);
     if (val < left_val){
-      node = node->left;
+      node_ind = node.left_ind;
     } else {
       val -= left_val;
-      ind += node->GetLeftWeight();
-      node = node->right;
+      ind += GetLeftWeight(node_ind);
+      node_ind = node.right_ind;
     }
   }
   return ind;
 }
 
-PrefixSumNode* PrefixSum::InsertInternal(PrefixSumNode* h, int64_t ind, int64_t val, int64_t leaf_val){
-  if (h == NULL){
+int64_t PrefixSum::InsertInternal(int64_t node_ind, uint64_t ind, int64_t val){
+  if (node_ind < 0){
     assert(ind < 2);
-    PrefixSumNode* new_node = new PrefixSumNode(2, leaf_val + val);
-    new_node->left_val = (ind == 0) ? val : leaf_val;
-    new_node->right_val = (ind == 0) ? leaf_val : val;
-    return new_node;
+    int64_t pre_leave_ind = node_ind;
+    PrefixSumLeaf& pre_leaf = leaves_[ToLeafInd(pre_leave_ind)];
+    int64_t leaf_val = pre_leaf.val;
+    PrefixSumNode new_node(2, leaf_val + val);
+    int64_t new_node_ind = nodes_.size();
+    pre_leaf.parent = new_node_ind;
+    leaves_.push_back(PrefixSumLeaf(new_node_ind, val));
+    int64_t new_leave_ind = -(static_cast<int64_t>(leaves_.size()));
+    new_node.left_ind = (ind == 0) ? new_leave_ind : pre_leave_ind;
+    new_node.right_ind = (ind == 0) ? pre_leave_ind : new_leave_ind;
+    nodes_.push_back(new_node);
+    return new_node_ind;
+  }
+  
+  PrefixSumNode& node = nodes_[node_ind];
+  node.weight += 1;
+  node.sum += val;
+  if (IsRED(node.left_ind) && IsRED(node.right_ind)){
+    FlipColor(node_ind);
   }
 
-  h->weight += 1;
-  h->sum += val;
-  if (IsRED(h->left) && IsRED(h->right)){
-    FlipColor(h);
-  }
-
-  int64_t left_weight = h->GetLeftWeight();
+  uint64_t left_weight = GetLeftWeight(node_ind);
+  const PrefixSumNode& cur_node = nodes_[node_ind];
   if (ind < left_weight){
-    h->left = InsertInternal(h->left, ind, val, h->left_val);
+    int ret = InsertInternal(cur_node.left_ind, ind, val);
+    nodes_[node_ind].left_ind = ret;
   } else {
-    h->right = InsertInternal(h->right, ind - left_weight, val, h->right_val);
+    int64_t ret = InsertInternal(cur_node.right_ind, ind - left_weight, val);
+    nodes_[node_ind].right_ind = ret;
+  }
+ 
+  if (IsRED(nodes_[node_ind].right_ind)){
+    node_ind = RotateLeft(node_ind);
+  }
+
+  const PrefixSumNode& new_node = nodes_[node_ind];
+  if (IsRED(new_node.left_ind)){
+    if (IsRED(nodes_[new_node.left_ind].left_ind)){
+      node_ind = RotateRight(node_ind);
+    }
   }
   
-  if (IsRED(h->right)){
-    h = RotateLeft(h);
+  return node_ind;
+}
+
+bool PrefixSum::IsRED(int64_t node_ind) const{
+  if (node_ind < 0) return false;
+  return nodes_[node_ind].color == kRED;
+}
+
+void PrefixSum::FlipColor(int64_t node_ind) {
+  PrefixSumNode& node = nodes_[node_ind];
+  node.color = !node.color;
+  if (node.left_ind >= 0){
+    nodes_[node.left_ind].color = !nodes_[node.left_ind].color;
+  }
+  if (node.right_ind >= 0){
+    nodes_[node.right_ind].color = !nodes_[node.right_ind].color;
+  }
+}
+
+int64_t PrefixSum::RotateLeft(int64_t h_ind){
+  PrefixSumNode& h = nodes_[h_ind];
+  int64_t x_ind = h.right_ind;
+  PrefixSumNode& x = nodes_[x_ind];
+  x.sum = h.sum;
+  x.weight = h.weight;
+  h.sum = GetLeftVal(h_ind) + GetLeftVal(x_ind);
+  h.weight = GetLeftWeight(h_ind) + GetLeftWeight(x_ind);
+  //h.right_val = x.left_val;
+
+  h.right_ind = x.left_ind;
+  if (h.right_ind < 0) {
+    leaves_[ToLeafInd(h.right_ind)].parent = h_ind;
+  }
+
+  x.left_ind = h_ind;
+  if (x.left_ind < 0) {
+    leaves_[ToLeafInd(x.left_ind)].parent = x_ind;
+  }
+
+  x.color = nodes_[x.left_ind].color;
+  nodes_[x.left_ind].color = kRED;
+
+  assert(x_ind >= 0);
+  return x_ind;
+}
+
+int64_t PrefixSum::RotateRight(int64_t h_ind){
+  PrefixSumNode& h = nodes_[h_ind];
+  int64_t x_ind = h.left_ind;
+  PrefixSumNode& x = nodes_[x_ind];
+  x.sum = h.sum;
+  x.weight = h.weight;
+  h.sum = GetRightVal(h_ind) + GetRightVal(x_ind);
+  h.weight = GetRightWeight(h_ind) + GetRightWeight(x_ind);
+  //h.left_val = x.right_val;
+
+  h.left_ind = x.right_ind;
+  if (h.left_ind < 0) {
+    leaves_[ToLeafInd(h.left_ind)].parent = h_ind;
+  }
+  x.right_ind = h_ind;
+  if (x.right_ind < 0) {
+    leaves_[ToLeafInd(x.right_ind)].parent = x_ind;
   }
   
-  if (IsRED(h->left) && IsRED(h->left->left)){
-    h = RotateRight(h);
+  x.color = nodes_[x.right_ind].color;
+  nodes_[x.right_ind].color = kRED;
+
+  assert(x_ind >= 0);
+  return x_ind;
+}
+
+/*
+void PrefixSum::Delete(int64_t ind){
+  if (ind >= num_){
+    throw std::out_of_range("PrefixSum::InsertInternal out of range");
   }
-  
-  return h;
-}
-
-bool PrefixSum::IsRED(PrefixSumNode* h) const{
-  if (h == NULL) return false;
-  return h->color == kRED;
-}
-
-void PrefixSum::FlipColor(PrefixSumNode* x){
-  x->color = !x->color;
-  if (x->left != NULL){
-    x->left->color = !x->left->color;
+  root_ind_ = DeleteInternal(root_ind_, ind);
+  if (root_ind_ >= 0){
+    nodes_[root_ind_].color = kBLACK;
   }
-  if (x->right != NULL){
-    x->right->color = !x->right->color;
+  //sum_ += val;
+  --num_;
+}
+*/
+
+/*
+int64_t PrefixSum::DeleteInternal(int64_t node_ind, int64_t ind){
+  if (node_ind < 0){
+    int64_t delete_leaf_ind = ToLeafInd(node_ind);
+    if (delete_leaf_ind != leaves_.size()-1){
+      std::swap(leaves_[delete_leaf_ind], leaves_[leaves_.size()-1]);
+      
+    }
+    return -777;
   }
+  int64_t left_weight = GetLeftWeight(node_ind);
+  int64_t left_ind = nodes_[node_ind].left_ind;
+  if (ind < left_weight){
+    if (!IsRED(left_ind) && left_ind >= 0 && !IsRED(nodes_[left_ind].left_ind)){
+      node_ind = MoveREDLeft(node_ind);
+    }
+    int ret = DeleteInternal(nodes_[node_ind].left_ind, ind);
+    nodes_[node_ind].left_ind = ret;
+  } else {
+    if (IsRED(left_ind)){
+      node_ind = RotateRight(node_ind);
+    }
+    int64_t right_ind = nodes_[node_ind].right_ind;
+    if (!IsRED(right_ind) && right_ind >= 0 && !IsRED(nodes_[right_ind].left_ind)){
+      node_ind = MoveREDRight(node_ind);
+    }
+    int ret = DeleteInternal(nodes_[node_ind].right_ind, ind - left_weight); 
+    nodes_[node_ind].right_ind = ret;
+  }
+  return FixUp(node_ind);
 }
 
-PrefixSumNode* PrefixSum::RotateLeft(PrefixSumNode* h){
-  PrefixSumNode* x = h->right;
-  x->sum = h->sum;
-  x->weight = h->weight;
-  h->sum = h->GetLeftVal() + x->GetLeftVal();
-  h->weight = h->GetLeftWeight() + x->GetLeftWeight();
-  h->right_val = x->left_val;
-
-  h->right = x->left;
-  x->left = h;
-  x->color = x->left->color;
-  x->left->color = kRED;
-
-
-  return x;
+int64_t PrefixSum::MoveREDLeft(int64_t node_ind){
+  FlipColor(node_ind);
+  int64_t right_ind = nodes_[node_ind].right_ind;
+  if (right_ind >= 0 && IsRED(nodes_[right_ind].left_ind)){
+    nodes_[node_ind].right_ind = RotateRight(right_ind);
+    node_ind = RotateLeft(node_ind);
+    FlipColor(node_ind);
+  }
+  return node_ind;
 }
 
-PrefixSumNode* PrefixSum::RotateRight(PrefixSumNode* h){
-  PrefixSumNode* x = h->left;
-  x->sum = h->sum;
-  x->weight = h->weight;
-  h->sum = h->GetRightVal() + x->GetRightVal();
-  h->weight = h->GetRightWeight() + x->GetRightWeight();
-  h->left_val = x->right_val;
-
-  h->left = x->right;
-  x->right = h;
-  x->color = x->right->color;
-  x->right->color = kRED;
-
-
-  return x;
+int64_t PrefixSum::MoveREDRight(int64_t node_ind){
+  FlipColor(node_ind);
+  int64_t left_ind = nodes_[node_ind].left_ind;
+  if (left_ind >= 0 && IsRED(nodes_[left_ind].left_ind)){
+    node_ind = RotateRight(node_ind);
+    FlipColor(node_ind);
+  }
+  return node_ind;
 }
+
+int64_t PrefixSum::FixUp(int64_t node_ind){
+  if (node_ind < 0) return node_ind;
+  if (IsRED(nodes_[node_ind].right_ind)){
+    node_ind = RotateLeft(node_ind);
+  }
+  int64_t left_ind = nodes_[node_ind].left_ind;
+  if (IsRED(left_ind) && IsRED(nodes_[left_ind].left_ind)){
+    node_ind = RotateRight(node_ind);
+  }
+  if (IsRED(nodes_[node_ind].left_ind) && IsRED(nodes_[node_ind].right_ind)){
+    FlipColor(node_ind);
+  }
+  return node_ind;
+}
+*/
 
 } // namespace prefixsum

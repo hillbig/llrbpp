@@ -60,11 +60,31 @@ TEST(PrefixSum, Find){
   ASSERT_EQ(1, ps.FindInPositiveValues(5));
 }
 
+TEST(PrefixSum, get){
+  PrefixSum ps;
+  ps.Insert(0, 0);
+  ps.Insert(1, 1);
+  ps.Insert(2, 2);
+  ASSERT_EQ(0, ps.Get(0));
+  ASSERT_EQ(1, ps.Get(1));
+  ASSERT_EQ(2, ps.Get(2));
+
+  ps.Insert(1, 7);
+  ASSERT_EQ(0, ps.Get(0));
+  ASSERT_EQ(7, ps.Get(1));
+  ASSERT_EQ(1, ps.Get(2));
+  ASSERT_EQ(2, ps.Get(3));
+}
+
 TEST(PrefixSum, find){
   PrefixSum ps;
   ps.Insert(0, 2);
   ps.Insert(1, 4);
+  ps.Print();
   ps.Insert(2, 1);
+  ps.Print();
+  ps.CheckParent();
+  /*
   ASSERT_EQ(0, ps.FindInPositiveValues(0));
   ASSERT_EQ(0, ps.FindInPositiveValues(1));
   ASSERT_EQ(1, ps.FindInPositiveValues(2));
@@ -73,6 +93,7 @@ TEST(PrefixSum, find){
   ASSERT_EQ(1, ps.FindInPositiveValues(5));
   ASSERT_EQ(2, ps.FindInPositiveValues(6));
   ASSERT_EQ(3, ps.FindInPositiveValues(7));
+  */
 }
 
 
@@ -114,9 +135,10 @@ TEST(PrefixSum, small){
   ASSERT_EQ(77777, ps.Get(1));
   ASSERT_EQ(1006,  ps.Get(2));
   ASSERT_EQ(10000, ps.Get(3));
+  
+  ps.CheckParent();
 }
 
-/*
 TEST(PrefixSum, large){
   uint64_t N = 10000;
   vector<uint64_t> vals(N);
@@ -180,4 +202,20 @@ TEST(PrefixSum, random){
     ASSERT_LT(v, cums[ind+1]) << " ind=" << ind;
   }
 }
-*/
+
+TEST(prefixsum, random2){
+  int N = 100000;
+  prefixsum::PrefixSum ps;
+  for (int i = 0; i < N; ++i){
+    int ind = rand() % (i+1);
+    int val = rand();
+    ps.Insert(ind, val);
+  }
+ 
+  int64_t sum = 0;
+  int query_num = 1000000;
+  for (int i = 0; i < query_num; ++i){
+    int ind = rand() % N;
+    sum += ps.GetPrefixSum(ind);
+  }
+}

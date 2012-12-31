@@ -16,8 +16,9 @@ double gettimeofday_sec() {
 using namespace std;
 
 int main(int argc, char* argv[]){
+  int N = 100000;
+  /*
   llrbpp::LLRBPP<int, int> fid;
-  int N = 1000000;
   queue<int> delete_keys;
   for (int i = 0; i < N; ++i){
     int key = rand();
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]){
   }
   
   cout << fid.Num() << " " << log(fid.Num()) / log(2.f) << " " << (float) fid.DepthSum() / fid.Num() << " " << fid.DepthMax() << std::endl;
+  */
 
   double begin_time = gettimeofday_sec();
   prefixsum::PrefixSum ps;
@@ -43,6 +45,15 @@ int main(int argc, char* argv[]){
     ps.Insert(ind, val);
   }
   cout << ps.Num() << " " << log(ps.Num()) / log(2.f) << " " << (float) ps.DepthSum() / ps.Num() << " " << ps.DepthMax() << std::endl;
+  cout << gettimeofday_sec() - begin_time << endl;
+
+  begin_time = gettimeofday_sec();
+  int64_t sum = 0;
+  int query_num = 1000000;
+  for (int i = 0; i < query_num; ++i){
+    int ind = rand() % N;
+    sum += ps.GetPrefixSum(ind);
+  }
   cout << gettimeofday_sec() - begin_time << endl;
   
   return 0;

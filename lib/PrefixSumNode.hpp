@@ -20,48 +20,24 @@
 #ifndef PREFIXSUM_PREFIXSUM_NODE_HPP_
 #define PREFIXSUM_PREFIXSUM_NODE_HPP_
 
-#include <stdio.h> // NULL
+#include <limits.h>
 
 namespace prefixsum {
 
 const static bool kRED = true;
 const static bool kBLACK = false;
+const static int64_t kNULL = -INT_MAX;
 
 struct PrefixSumNode{
-  PrefixSumNode(int64_t weight, int64_t sum) : 
-    weight(weight), sum(sum), left(NULL), right(NULL), color(kRED) {}
+  PrefixSumNode(uint64_t weight, int64_t sum) : 
+    weight(weight), sum(sum), left_ind(kNULL), right_ind(kNULL), color(kRED) {}
   ~PrefixSumNode(){
-    delete left;
-    delete right;
   }
 
-  int64_t GetLeftWeight() const{
-    if (left == NULL) return 1;
-    return left->weight;
-  }
-
-  int64_t GetLeftVal() const{
-    if (left == NULL) return left_val;
-    return left->sum;
-  }
-
-  int64_t GetRightWeight() const{
-    if (right == NULL) return 1;
-    return right->weight;
-  }
-
-  int64_t GetRightVal() const{
-    if (right == NULL) return right_val;
-    return right->sum;
-  }
-
-
-  int64_t weight;
+  uint64_t weight;
   int64_t sum;
-  PrefixSumNode* left;
-  PrefixSumNode* right;
-  int64_t left_val;
-  int64_t right_val;
+  int64_t left_ind;
+  int64_t right_ind;
   bool color;
 };
 
